@@ -1,16 +1,34 @@
-import { Redis } from "@upstash/redis";
+// License storage backed by Supabase (palavir-co project).
+// Table: public.av_licenses
+//   license_key       text  primary key
+//   email             text  not null
+//   stripe_session_id text  not null unique
+//   paid_at           timestamptz not null
+//   created_at        timestamptz not null default now()
+// RLS is on, all reads/writes go through the service-role key.
 
-let cached: Redis | null = null;
+const REST_PATH = "/rest/v1/av_licenses";
 
-export function getKv(): Redis {
-  if (cached) return cached;
-  const url = process.env.KV_REST_API_URL;
-  const token = process.env.KV_REST_API_TOKEN;
-  if (!url || !token) {
-    throw new Error("KV_REST_API_URL and KV_REST_API_TOKEN must be set");
-  }
-  cached = new Redis({ url, token });
-  return cached;
+function getUrl(): string {
+  const url = process.env.SUPABASE_URL;
+  if (!url) throw new Error("SUPABASE_URL is not set");
+  return url.replace(/\/$/, "");
+}
+
+function getServiceKey(): string {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");
+  return key;
+}
+
+function headers(extra: Record<string, string> = {}): HeadersInit {
+  const key = getServiceKey();
+  return {
+    apikey: key,
+    Authorization: `Bearer ${key}`,
+    "Content-Type": "application/json",
+    ...extra,
+  };
 }
 
 export interface LicenseRecord {
@@ -20,45 +38,78 @@ export interface LicenseRecord {
   paidAt: string;
 }
 
+interface DbRow {
+  license_key: string;
+  email: string;
+  stripe_session_id: string;
+  paid_at: string;
+}
+
+function fromRow(row: DbRow): LicenseRecord {
+  return {
+    licenseKey: row.license_key,
+    email: row.email,
+    stripeSessionId: row.stripe_session_id,
+    paidAt: row.paid_at,
+  };
+}
+
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-function licenseKeyOf(record: LicenseRecord): string {
-  return `license:${record.licenseKey}`;
-}
-
-function emailKeyOf(email: string): string {
-  return `email:${normalizeEmail(email)}`;
-}
-
-function sessionKeyOf(sessionId: string): string {
-  return `session:${sessionId}`;
-}
-
 export async function saveLicense(record: LicenseRecord): Promise<void> {
-  const kv = getKv();
-  await Promise.all([
-    kv.set(licenseKeyOf(record), record),
-    kv.set(emailKeyOf(record.email), record),
-    kv.set(sessionKeyOf(record.stripeSessionId), record),
-  ]);
+  const res = await fetch(`${getUrl()}${REST_PATH}`, {
+    method: "POST",
+    headers: headers({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+    body: JSON.stringify({
+      license_key: record.licenseKey,
+      email: record.email,
+      stripe_session_id: record.stripeSessionId,
+      paid_at: record.paidAt,
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`saveLicense failed: ${res.status} ${body}`);
+  }
 }
 
 export async function getLicenseByEmailAndKey(
   email: string,
   licenseKey: string,
 ): Promise<LicenseRecord | null> {
-  const kv = getKv();
-  const record = await kv.get<LicenseRecord>(`license:${licenseKey}`);
-  if (!record) return null;
-  if (normalizeEmail(record.email) !== normalizeEmail(email)) return null;
-  return record;
+  const url = new URL(`${getUrl()}${REST_PATH}`);
+  url.searchParams.set("license_key", `eq.${licenseKey}`);
+  url.searchParams.set("select", "*");
+  url.searchParams.set("limit", "1");
+
+  const res = await fetch(url.toString(), { headers: headers() });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`getLicenseByEmailAndKey failed: ${res.status} ${body}`);
+  }
+  const rows = (await res.json()) as DbRow[];
+  const row = rows[0];
+  if (!row) return null;
+  if (normalizeEmail(row.email) !== normalizeEmail(email)) return null;
+  return fromRow(row);
 }
 
 export async function getLicenseBySession(
   sessionId: string,
 ): Promise<LicenseRecord | null> {
-  const kv = getKv();
-  return (await kv.get<LicenseRecord>(sessionKeyOf(sessionId))) ?? null;
+  const url = new URL(`${getUrl()}${REST_PATH}`);
+  url.searchParams.set("stripe_session_id", `eq.${sessionId}`);
+  url.searchParams.set("select", "*");
+  url.searchParams.set("limit", "1");
+
+  const res = await fetch(url.toString(), { headers: headers() });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`getLicenseBySession failed: ${res.status} ${body}`);
+  }
+  const rows = (await res.json()) as DbRow[];
+  const row = rows[0];
+  return row ? fromRow(row) : null;
 }
