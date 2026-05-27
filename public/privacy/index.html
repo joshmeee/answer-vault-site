@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy — AnswerVault</title>
+<meta name="description" content="AnswerVault privacy policy. Local-first. No remote AI. Answer content never leaves the browser.">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+<header>
+<h1>Privacy Policy</h1>
+<p class="tagline">Last updated: 2026-05-27</p>
+</header>
+
+<section>
+<p>AnswerVault is a local-first browser extension for saving reusable answers and filling long business forms faster.</p>
+</section>
+
+<section>
+<h2>Data stored</h2>
+<p>AnswerVault stores the answers you create, including:</p>
+<ul>
+<li>answer title</li>
+<li>answer tags</li>
+<li>answer body</li>
+<li>last updated timestamp</li>
+</ul>
+<p>This data is stored locally using browser extension storage.</p>
+</section>
+
+<section>
+<h2>Data transmission</h2>
+<p>AnswerVault does not send your saved answer content to an external server.</p>
+<p>Stripe handles checkout when you upgrade to Pro. AnswerVault stores license records on its server so the extension can activate or restore Pro. License records include purchase email, license key, Stripe checkout session ID, and paid timestamp.</p>
+<p>AnswerVault stores local entitlement metadata such as plan, purchase email, and paid timestamp in browser extension storage.</p>
+<p>AnswerVault does not use remote AI APIs.</p>
+<p>AnswerVault does not sell, rent, or share your answer data.</p>
+</section>
+
+<section>
+<h2>Page access</h2>
+<p>AnswerVault scans visible form fields on the active page after you open and use the extension so it can show fillable fields in the popup. Field scanning is used to support the form-fill workflow.</p>
+<p>AnswerVault fills fields only after you click a fill button.</p>
+<p>AnswerVault does not submit forms for you.</p>
+</section>
+
+<section>
+<h2>Permissions</h2>
+<p>AnswerVault requests:</p>
+<ul>
+<li><code>storage</code>: to store your reusable answers locally.</li>
+<li><code>activeTab</code>: to interact with the active tab when you use the extension.</li>
+<li><code>scripting</code>: to scan and fill fields on the active tab only when you use the extension.</li>
+<li><code>https://answer-vault-site.vercel.app/*</code>: to open checkout and activate Pro licenses.</li>
+</ul>
+<p>Business forms can appear on many different domains, including procurement portals, grant systems, vendor onboarding systems, and customer questionnaires. AnswerVault uses active-tab access for the form-fill workflow instead of running continuously across every page.</p>
+</section>
+
+<section>
+<h2>Contact</h2>
+<p>For privacy questions, contact the extension publisher through the Chrome Web Store listing.</p>
+</section>
+
+<nav>
+<a href="/">Home</a>
+<a href="/pricing/">Pricing</a>
+</nav>
+</main>
+</body>
+</html>

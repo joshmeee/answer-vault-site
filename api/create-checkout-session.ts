@@ -1,0 +1,42 @@
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { getStripe, getPriceId, getSiteUrl } from "./_lib/stripe.js";
+
+export default async function handler(
+  req: VercelRequest,
+  res: VercelResponse,
+) {
+  if (req.method === "OPTIONS") {
+    res.status(204).end();
+    return;
+  }
+  if (req.method !== "POST") {
+    res.status(405).json({ error: "Method not allowed" });
+    return;
+  }
+
+  try {
+    const stripe = getStripe();
+    const priceId = getPriceId();
+    const siteUrl = getSiteUrl();
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${siteUrl}/success/?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${siteUrl}/pricing/?canceled=1`,
+      allow_promotion_codes: true,
+      payment_intent_data: {
+        description: "AnswerVault Pro — one-time unlock",
+      },
+    });
+
+    if (!session.url) {
+      res.status(500).json({ error: "Stripe did not return a checkout URL" });
+      return;
+    }
+    res.status(200).json({ url: session.url });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    res.status(500).json({ error: message });
+  }
+}
