@@ -5,7 +5,44 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pricing — AnswerVault</title>
 <meta name="description" content="AnswerVault Pro is a one-time $39 unlock for unlimited saved answers.">
+
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+<link rel="apple-touch-icon" sizes="128x128" href="/icon-128.png">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="AnswerVault Pro — $39 one-time">
+<meta property="og:description" content="Unlimited saved answers and full-library import. Local-first. No subscriptions.">
+<meta property="og:url" content="https://answer-vault-site.vercel.app/pricing/">
+<meta property="og:image" content="https://answer-vault-site.vercel.app/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:site_name" content="AnswerVault">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="AnswerVault Pro — $39 one-time">
+<meta name="twitter:description" content="Unlimited saved answers and full-library import. Local-first. No subscriptions.">
+<meta name="twitter:image" content="https://answer-vault-site.vercel.app/og-image.png">
+
+<link rel="canonical" href="https://answer-vault-site.vercel.app/pricing/">
 <link rel="stylesheet" href="/style.css">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": "AnswerVault Pro",
+  "description": "One-time unlock for unlimited saved answers and full-library import in the AnswerVault Chrome extension.",
+  "brand": { "@type": "Brand", "name": "AnswerVault" },
+  "offers": {
+    "@type": "Offer",
+    "url": "https://answer-vault-site.vercel.app/pricing/",
+    "priceCurrency": "USD",
+    "price": "39.00",
+    "availability": "https://schema.org/InStock"
+  }
+}
+</script>
 </head>
 <body>
 <main>
@@ -33,7 +70,7 @@
 <li>License key restores Pro on any browser profile</li>
 </ul>
 <p><button id="buy" class="btn" type="button">Buy Pro</button></p>
-<p id="status" class="note" style="display:none"></p>
+<p id="status" class="note" style="display:none" role="status" aria-live="polite"></p>
 </section>
 
 <section>

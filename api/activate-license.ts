@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { getLicenseByEmailAndKey } from "./_lib/kv.js";
+import { rateLimit, reapOldRows, clientKey } from "./_lib/ratelimit.js";
 
 export default async function handler(
   req: VercelRequest,
@@ -11,6 +12,27 @@ export default async function handler(
   }
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
+    return;
+  }
+
+  const ip = clientKey(req);
+  const rl = await rateLimit({
+    bucket: "activate-license",
+    key: ip,
+    limit: 20,
+    windowSeconds: 60,
+  });
+  // Opportunistic cleanup ~1% of requests
+  if (Math.random() < 0.01) reapOldRows("activate-license", 60);
+
+  if (!rl.allowed) {
+    res
+      .setHeader("Retry-After", String(rl.retryAfterSeconds ?? 60))
+      .status(429)
+      .json({
+        error:
+          "Too many activation attempts. Wait a minute and try again, or contact support if you're stuck.",
+      });
     return;
   }
 
@@ -38,6 +60,7 @@ export default async function handler(
       paidAt: record.paidAt,
     });
   } catch (err) {
+    console.error("activate-license failed:", err);
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: message });
   }

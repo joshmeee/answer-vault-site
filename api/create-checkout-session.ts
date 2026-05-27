@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { getStripe, getPriceId, getSiteUrl } from "./_lib/stripe.js";
+import { rateLimit, reapOldRows, clientKey } from "./_lib/ratelimit.js";
 
 export default async function handler(
   req: VercelRequest,
@@ -11,6 +12,22 @@ export default async function handler(
   }
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
+    return;
+  }
+
+  const ip = clientKey(req);
+  const rl = await rateLimit({
+    bucket: "create-checkout-session",
+    key: ip,
+    limit: 10,
+    windowSeconds: 60,
+  });
+  if (Math.random() < 0.01) reapOldRows("create-checkout-session", 60);
+  if (!rl.allowed) {
+    res
+      .setHeader("Retry-After", String(rl.retryAfterSeconds ?? 60))
+      .status(429)
+      .json({ error: "Too many checkout attempts. Wait a minute." });
     return;
   }
 

@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { randomUUID } from "node:crypto";
 import { getStripe, getWebhookSecret } from "./_lib/stripe.js";
 import { saveLicense } from "./_lib/kv.js";
+import { sendLicenseEmail } from "./_lib/email.js";
 
 export const config = {
   api: { bodyParser: false },
@@ -17,7 +18,6 @@ async function readRawBody(req: VercelRequest): Promise<Buffer> {
 }
 
 function buildLicenseKey(): string {
-  // av_XXXX-XXXX-XXXX-XXXX
   const raw = randomUUID().replace(/-/g, "").toUpperCase();
   return `av_${raw.slice(0, 4)}-${raw.slice(4, 8)}-${raw.slice(8, 12)}-${raw.slice(12, 16)}`;
 }
@@ -71,7 +71,7 @@ export default async function handler(
       res.status(400).json({ error: "Checkout session has no email" });
       return;
     }
-    const record = {
+    const candidate = {
       email,
       licenseKey: buildLicenseKey(),
       stripeSessionId: session.id,
@@ -79,9 +79,29 @@ export default async function handler(
         ((session.created ?? Math.floor(Date.now() / 1000)) as number) * 1000,
       ).toISOString(),
     };
-    await saveLicense(record);
-    res.status(200).json({ received: true });
+    // Idempotent: if Stripe retries the webhook for the same session, we
+    // return the previously-issued license rather than minting a new one.
+    const record = await saveLicense(candidate);
+    const isNew = record.licenseKey === candidate.licenseKey;
+
+    if (isNew) {
+      try {
+        await sendLicenseEmail({
+          to: record.email,
+          licenseKey: record.licenseKey,
+          paidAt: record.paidAt,
+        });
+      } catch (err) {
+        // Email delivery is best-effort — license is already persisted and
+        // the success page will still show it. Log but don't fail the webhook
+        // (or Stripe will keep retrying and the user will get multiple emails).
+        console.error("sendLicenseEmail failed:", err);
+      }
+    }
+
+    res.status(200).json({ received: true, licenseKey: record.licenseKey });
   } catch (err) {
+    console.error("stripe-webhook failed:", err);
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: message });
   }

@@ -58,10 +58,20 @@ function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-export async function saveLicense(record: LicenseRecord): Promise<void> {
+// Idempotent. If a row already exists for the given stripe_session_id,
+// returns the existing record (with the existing license_key) rather than
+// inserting a duplicate. This lets the webhook handler retry safely.
+export async function saveLicense(
+  record: LicenseRecord,
+): Promise<LicenseRecord> {
+  // Look up first — covers the common case where the webhook is being
+  // retried for an already-fulfilled session.
+  const existing = await getLicenseBySession(record.stripeSessionId);
+  if (existing) return existing;
+
   const res = await fetch(`${getUrl()}${REST_PATH}`, {
     method: "POST",
-    headers: headers({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+    headers: headers({ Prefer: "return=representation" }),
     body: JSON.stringify({
       license_key: record.licenseKey,
       email: record.email,
@@ -69,10 +79,23 @@ export async function saveLicense(record: LicenseRecord): Promise<void> {
       paid_at: record.paidAt,
     }),
   });
+
+  if (res.status === 409) {
+    // Race: another concurrent webhook invocation inserted the row in the
+    // microsecond between our lookup and our insert. Re-fetch.
+    const raced = await getLicenseBySession(record.stripeSessionId);
+    if (raced) return raced;
+  }
+
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`saveLicense failed: ${res.status} ${body}`);
   }
+
+  const rows = (await res.json()) as DbRow[];
+  const row = rows[0];
+  if (!row) throw new Error("saveLicense: no row returned after insert");
+  return fromRow(row);
 }
 
 export async function getLicenseByEmailAndKey(
