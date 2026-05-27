@@ -36,7 +36,12 @@ export default async function handler(
     }
     res.status(200).json({ url: session.url });
   } catch (err) {
+    console.error("create-checkout-session failed:", err);
     const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
+    const code =
+      err && typeof err === "object" && "code" in err
+        ? String((err as { code: unknown }).code)
+        : undefined;
+    res.status(500).json({ error: message, code });
   }
 }
