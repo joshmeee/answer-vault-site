@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pro unlocked — AnswerVault</title>
+<meta name="description" content="Your AnswerVault Pro license has been activated.">
+<meta name="robots" content="noindex,nofollow">
+
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+<link rel="apple-touch-icon" sizes="128x128" href="/icon-128.png">
+
+<link rel="canonical" href="https://answer-vault-site.vercel.app/success/">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+<header>
+<h1>Thanks — Pro is yours</h1>
+<p class="tagline">Copy your purchase email and license key below, then paste them into AnswerVault's Options page.</p>
+</header>
+
+<section id="loading" role="status" aria-live="polite">
+<p>Finalizing your license. This usually takes a few seconds while Stripe confirms the payment.</p>
+</section>
+
+<section id="result" style="display:none" aria-live="polite">
+<h2>Your license</h2>
+<p><strong>Email:</strong> <code id="email"></code></p>
+<p><strong>License key:</strong> <code id="key"></code></p>
+<p class="note">
+  Open AnswerVault → Options → paste both → click Activate.<br>
+  Keep this license key. You'll need it to restore Pro on a new browser profile.<br>
+  We also email it to you for safekeeping.
+</p>
+</section>
+
+<section id="error" style="display:none" role="alert" aria-live="assertive">
+<h2>Something went wrong</h2>
+<p id="errorMsg" class="note"></p>
+<p>If the license doesn't appear after one minute, contact <a href="mailto:josh@palavir.co">josh@palavir.co</a> with your Stripe receipt and we'll resend it.</p>
+</section>
+
+<nav>
+<a href="/">Home</a>
+<a href="/pricing/">Pricing</a>
+<a href="/privacy/">Privacy</a>
+</nav>
+</main>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const sessionId = params.get("session_id");
+const loading = document.getElementById("loading");
+const result = document.getElementById("result");
+const errorBlock = document.getElementById("error");
+const errorMsg = document.getElementById("errorMsg");
+
+async function pollOnce() {
+  const r = await fetch("/api/checkout-success?session_id=" + encodeURIComponent(sessionId));
+  if (r.status === 404) return null;
+  if (!r.ok) {
+    const data = await r.json().catch(() => ({}));
+    throw new Error(data.error || ("HTTP " + r.status));
+  }
+  return await r.json();
+}
+
+async function start() {
+  if (!sessionId) {
+    loading.style.display = "none";
+    errorBlock.style.display = "block";
+    errorMsg.textContent = "Missing session_id in URL.";
+    return;
+  }
+  const deadline = Date.now() + 30000;
+  while (Date.now() < deadline) {
+    try {
+      const data = await pollOnce();
+      if (data) {
+        document.getElementById("email").textContent = data.email;
+        document.getElementById("key").textContent = data.licenseKey;
+        loading.style.display = "none";
+        result.style.display = "block";
+        return;
+      }
+    } catch (err) {
+      loading.style.display = "none";
+      errorBlock.style.display = "block";
+      errorMsg.textContent = err.message || String(err);
+      return;
+    }
+    await new Promise(r => setTimeout(r, 1500));
+  }
+  loading.style.display = "none";
+  errorBlock.style.display = "block";
+  errorMsg.textContent = "License not yet provisioned. Refresh in a few seconds, or check your email — we sent a copy to your purchase address.";
+}
+start();
+</script>
+</body>
+</html>

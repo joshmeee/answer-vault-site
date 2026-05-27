@@ -1,0 +1,19 @@
+{
+  "name": "answer-vault-site",
+  "version": "0.2.0",
+  "private": true,
+  "description": "AnswerVault marketing site + license API",
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "stripe": "^17.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@vercel/node": "^5.0.2",
+    "typescript": "^5.7.3"
+  }
+}
