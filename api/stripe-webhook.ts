@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { getStripe, getWebhookSecret } from "./_lib/stripe.js";
 import { saveLicense } from "./_lib/kv.js";
 import { sendLicenseEmail } from "./_lib/email.js";
+import { isAnswerVaultSession } from "./_lib/product.js";
 
 export const config = {
   api: { bodyParser: false },
@@ -66,6 +67,13 @@ export default async function handler(
 
   try {
     const session = event.data.object as Stripe.Checkout.Session;
+    // The Stripe account is shared by every Palavir product. Ignore payments
+    // for anything other than the AnswerVault price (no license, no email).
+    if (!(await isAnswerVaultSession(getStripe(), session))) {
+      console.warn("Ignoring checkout session for another product", session.id);
+      res.status(200).json({ received: true, ignored: true });
+      return;
+    }
     const email = emailFromSession(session);
     if (!email) {
       res.status(400).json({ error: "Checkout session has no email" });
