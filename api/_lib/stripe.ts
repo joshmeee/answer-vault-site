@@ -11,7 +11,9 @@ export function getStripe(): Stripe {
 }
 
 export function getPriceId(): string {
-  const id = process.env.STRIPE_PRICE_ID;
+  // Vercel env values in this portfolio often carry a trailing CR; trim so
+  // checkout creation and the webhook product filter use the same value.
+  const id = process.env.STRIPE_PRICE_ID?.trim();
   if (!id) throw new Error("STRIPE_PRICE_ID is not set");
   return id;
 }
